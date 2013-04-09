@@ -201,6 +201,29 @@ DmxMain::write(const Arguments& args) {
             
     return scope.Close(Boolean::New(dmx->m_Thread->WriteDmx(buf)));
 
+} 
+
+Handle<Value>
+DmxMain::set(const Arguments& args) {   
+    HandleScope scope;
+    DmxBuffer buf;
+    Local<Object> obj = args.This();
+    DmxMain* dmx = ObjectWrap::Unwrap<DmxMain>(obj);
+
+    if (dmx->m_Thread == NULL) {
+        fprintf(stderr, "io::set() not started, can not set\n");
+        return scope.Close(Boolean::New(false));
+    }
+    
+    if (args.Length() < 2) {
+        fprintf(stderr, "io::set() requires two arguments (channel, value)\n");
+        return scope.Close(Boolean::New(false));
+    }
+    
+    buf.SetChannel( args[0]->Int32Value(), args[1]->Int32Value() );
+    
+    return scope.Close(Boolean::New(dmx->m_Thread->WriteDmx(buf)));
+    
 }
 
 extern "C" {

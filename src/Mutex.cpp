@@ -13,9 +13,9 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * OpenDMX driver from OLA. 
+ * OpenDMX driver from OLA.
  * adapted for node.js with fixed darwin support
- * Copyright (C) 2010 Simon Newton              
+ * Copyright (C) 2010 Simon Newton
  * Copyright (C) 2013 Nicklas Marelius
  */
 
@@ -26,7 +26,7 @@
  * Construct a new mutex object
  */
 Mutex::Mutex() {
-  pthread_mutex_init(&m_mutex, NULL);
+    pthread_mutex_init(&m_mutex, NULL);
 }
 
 
@@ -34,7 +34,7 @@ Mutex::Mutex() {
  * Clean up
  */
 Mutex::~Mutex() {
-  pthread_mutex_destroy(&m_mutex);
+    pthread_mutex_destroy(&m_mutex);
 }
 
 
@@ -42,7 +42,7 @@ Mutex::~Mutex() {
  * Lock this mutex
  */
 void Mutex::Lock() {
-  pthread_mutex_lock(&m_mutex);
+    pthread_mutex_lock(&m_mutex);
 }
 
 
@@ -51,8 +51,8 @@ void Mutex::Lock() {
  * @return true if we got the lock, false otherwise
  */
 bool Mutex::TryLock() {
-  int i = pthread_mutex_trylock(&m_mutex);
-  return i == 0;
+    int i = pthread_mutex_trylock(&m_mutex);
+    return i == 0;
 }
 
 
@@ -60,7 +60,7 @@ bool Mutex::TryLock() {
  * Unlock this mutex
  */
 void Mutex::Unlock() {
-  pthread_mutex_unlock(&m_mutex);
+    pthread_mutex_unlock(&m_mutex);
 }
 
 
@@ -69,14 +69,14 @@ void Mutex::Unlock() {
  */
 MutexLocker::MutexLocker(Mutex *mutex)
     : m_mutex(mutex) {
-  m_mutex->Lock();
+    m_mutex->Lock();
 }
 
 /**
  * Destroy this MutexLocker and unlock the mutex
  */
 MutexLocker::~MutexLocker() {
-  m_mutex->Unlock();
+    m_mutex->Unlock();
 }
 
 
@@ -84,7 +84,7 @@ MutexLocker::~MutexLocker() {
  * New ConditionVariable
  */
 ConditionVariable::ConditionVariable() {
-  pthread_cond_init(&m_condition, NULL);
+    pthread_cond_init(&m_condition, NULL);
 }
 
 
@@ -92,7 +92,7 @@ ConditionVariable::ConditionVariable() {
  * Clean up
  */
 ConditionVariable::~ConditionVariable() {
-  pthread_cond_destroy(&m_condition);
+    pthread_cond_destroy(&m_condition);
 }
 
 
@@ -101,7 +101,7 @@ ConditionVariable::~ConditionVariable() {
  * @param mutex the mutex that is locked
  */
 void ConditionVariable::Wait(Mutex *mutex) {
-  pthread_cond_wait(&m_condition, &mutex->m_mutex);
+    pthread_cond_wait(&m_condition, &mutex->m_mutex);
 }
 
 
@@ -112,8 +112,8 @@ void ConditionVariable::Wait(Mutex *mutex) {
  * @returns true if we received a signal, false if the timeout expired.
  */
 bool ConditionVariable::TimedWait(Mutex *mutex, struct timespec *wait_time) {
-  int i = pthread_cond_timedwait(&m_condition, &mutex->m_mutex, wait_time);
-  return i == 0;
+    int i = pthread_cond_timedwait(&m_condition, &mutex->m_mutex, wait_time);
+    return i == 0;
 }
 
 
@@ -121,7 +121,7 @@ bool ConditionVariable::TimedWait(Mutex *mutex, struct timespec *wait_time) {
  * Wake up a single listener
  */
 void ConditionVariable::Signal() {
-  pthread_cond_signal(&m_condition);
+    pthread_cond_signal(&m_condition);
 }
 
 
@@ -129,5 +129,5 @@ void ConditionVariable::Signal() {
  * Wake up all listeners
  */
 void ConditionVariable::Broadcast() {
-  pthread_cond_broadcast(&m_condition);
+    pthread_cond_broadcast(&m_condition);
 }

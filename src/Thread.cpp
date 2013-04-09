@@ -13,12 +13,12 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * OpenDMX driver from OLA. 
+ * OpenDMX driver from OLA.
  * adapted for node.js with fixed darwin support
- * Copyright (C) 2010 Simon Newton              
+ * Copyright (C) 2010 Simon Newton
  * Copyright (C) 2013 Nicklas Marelius
  */
- 
+
 #include <iostream>
 
 #include <pthread.h>
@@ -28,8 +28,8 @@
  * Called by the new thread
  */
 void *StartThread(void *d) {
-  Thread *thread = static_cast<Thread*>(d);
-  return thread->_InternalRun();
+    Thread *thread = static_cast<Thread*>(d);
+    return thread->_InternalRun();
 }
 
 
@@ -37,17 +37,17 @@ void *StartThread(void *d) {
  * Start this thread. This only returns only the thread is running.
  */
 bool Thread::Start() {
-  MutexLocker locker(&m_mutex);
-  if (m_running) {
-    std::cerr << "Attempt to start already running thread";
-    return false;
-  }
+    MutexLocker locker(&m_mutex);
+    if (m_running) {
+        std::cerr << "Attempt to start already running thread";
+        return false;
+    }
 
-  if (FastStart()) {
-    m_condition.Wait(&m_mutex);
-    return true;
-  }
-  return false;
+    if (FastStart()) {
+        m_condition.Wait(&m_mutex);
+        return true;
+    }
+    return false;
 }
 
 
@@ -56,15 +56,15 @@ bool Thread::Start() {
  * you know what you're doing as it introduces a race condition with Join()
  */
 bool Thread::FastStart() {
-  int ret = pthread_create(&m_thread_id,
-                           NULL,
-                           StartThread,
-                           static_cast<void*>(this));
-  if (ret) {
-    std::cerr << "pthread create failed";
-    return false;
-  }
-  return true;
+    int ret = pthread_create(&m_thread_id,
+                             NULL,
+                             StartThread,
+                             static_cast<void*>(this));
+    if (ret) {
+        std::cerr << "pthread create failed";
+        return false;
+    }
+    return true;
 }
 
 
@@ -73,19 +73,19 @@ bool Thread::FastStart() {
  * @returns false if the thread wasn't running or didn't stop, true otherwise.
  */
 bool Thread::Join(void *ptr) {
-  {
-    MutexLocker locker(&m_mutex);
-    if (!m_running)
-      return false;
-  }
-  int ret = pthread_join(m_thread_id, &ptr);
-  m_running = false;
-  return 0 == ret;
+    {
+        MutexLocker locker(&m_mutex);
+        if (!m_running)
+            return false;
+    }
+    int ret = pthread_join(m_thread_id, &ptr);
+    m_running = false;
+    return 0 == ret;
 }
 
 bool Thread::IsRunning() {
-  MutexLocker locker(&m_mutex);
-  return m_running;
+    MutexLocker locker(&m_mutex);
+    return m_running;
 }
 
 
@@ -93,10 +93,10 @@ bool Thread::IsRunning() {
  * Mark the thread as running and call the main Run method
  */
 void *Thread::_InternalRun() {
-  {
-    MutexLocker locker(&m_mutex);
-    m_running = true;
-  }
-  m_condition.Signal();
-  return Run();
+    {
+        MutexLocker locker(&m_mutex);
+        m_running = true;
+    }
+    m_condition.Signal();
+    return Run();
 }

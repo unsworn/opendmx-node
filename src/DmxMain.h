@@ -40,7 +40,8 @@ public:
     static Handle<Value> stop(const Arguments& args);
     static Handle<Value> close(const Arguments& args);
     static Handle<Value> write(const Arguments& args);
-
+    static Handle<Value> set(const Arguments& args);
+    
 protected:
     ~DmxMain();
 

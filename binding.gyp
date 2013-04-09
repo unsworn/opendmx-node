@@ -11,7 +11,8 @@
                 "src/DmxBuffer.cpp",
                 "src/DmxThread.cpp",
                 "src/Mutex.cpp",
-                "src/Thread.cpp"
+                "src/Thread.cpp",
+                "src/Serial.cpp"
             ],
             "conditions": [
                 ['OS=="mac"',

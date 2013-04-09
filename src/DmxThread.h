@@ -18,39 +18,33 @@
  * Copyright (C) 2010 Simon Newton              
  * Copyright (C) 2013 Nicklas Marelius
  */
- 
+
 #ifndef DmxThread_H_
 #define DmxThread_H_
 
 #include <string>
-
-#include <ftd2xx.h>
-
+#include "Serial.h"
 #include "DmxBuffer.h"
 #include "Thread.h"
-
 
 class DmxThread: public Thread {
   public:
     explicit DmxThread(const string &path);
-    ~DmxThread() {}
+    ~DmxThread() {} 
     bool Open();
     void Dispose();
     bool Stop();
     bool WriteDmx(const DmxBuffer &buffer);
     void *Run();
-  protected:
-    void InitFt();
+
   private:
-    int m_fd;
+    serial_s m_fd;
     string m_path;
     DmxBuffer m_buffer;
     bool m_term;
     Mutex m_mutex;
     Mutex m_term_mutex;
     ConditionVariable m_term_cond;
-    FT_HANDLE m_handle;
-    static const int INVALID_FD = -1;
 };
 
 #endif
