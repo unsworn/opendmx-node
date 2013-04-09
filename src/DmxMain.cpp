@@ -1,3 +1,24 @@
+/*
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Library General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ *
+ * OpenDMX driver from OLA. 
+ * adapted for node.js with fixed darwin support
+ * Copyright (C) 2010 Simon Newton              
+ * Copyright (C) 2013 Nicklas Marelius
+ */
+ 
 #include "DmxMain.h"
 #include <node_buffer.h>
 
@@ -21,7 +42,6 @@ DmxMain::~DmxMain()
         fprintf(stderr, "Warning opendmx.io not closed properly\n");
         if (this->m_Thread->IsRunning()) {
             this->m_Thread->Stop();
-            this->m_Thread->Join();
         }
         delete this->m_Thread;
         this->m_Thread = NULL;
@@ -42,6 +62,7 @@ DmxMain::init(Handle<Object> target) {
 
     NODE_SET_PROTOTYPE_METHOD(constructor_template, "open", open);
     NODE_SET_PROTOTYPE_METHOD(constructor_template, "start", start);
+    NODE_SET_PROTOTYPE_METHOD(constructor_template, "stop", stop);
     NODE_SET_PROTOTYPE_METHOD(constructor_template, "close", close);
     NODE_SET_PROTOTYPE_METHOD(constructor_template, "write", write);
 
@@ -59,31 +80,33 @@ DmxMain::New(const Arguments& args) {
 Handle<Value>
 DmxMain::open(const Arguments& args) {
     struct stat st;
+    string dev;
     
     HandleScope scope;
     Local<Object> obj = args.This();
     DmxMain* dmx = ObjectWrap::Unwrap<DmxMain>(obj);
 
-    if (args.Length() < 1) {
-        fprintf(stderr, "io::open() needs atleast 1 argument\n");
-        return scope.Close(Boolean::New(false));
-    }
-    
+
     if (dmx->m_Thread != NULL) {
         fprintf(stderr, "io::open() already open\n");
         return scope.Close(Boolean::New(true));
-    }
+    }                   
+    
+    if (args.Length() >= 1) {
         
-    String::Utf8Value path(args[0]);
+        String::Utf8Value path(args[0]);
 
-    if (stat(*path, &st) != 0) {
-        fprintf(stderr, "io::open() no such file or directory: %s\n", *path);
-        return scope.Close(Boolean::New(false));
+        if (stat(*path, &st) != 0) {
+            fprintf(stderr, "io::open() no such file or directory: %s\n", *path);
+            return scope.Close(Boolean::New(false));
+        }
+        
+        dev = *path;
     }
     
-    dmx->m_Thread = new OpenDmxThread( *path );
+    dmx->m_Thread = new DmxThread( dev );
             
-    return scope.Close(Boolean::New(true));
+    return scope.Close(Boolean::New( dmx->m_Thread->Open() ));
 }
 
 Handle<Value>
@@ -93,11 +116,25 @@ DmxMain::start(const Arguments& args) {
     DmxMain* dmx = ObjectWrap::Unwrap<DmxMain>(obj);
     
     if (dmx->m_Thread == NULL) {
-        fprintf(stderr, "io::start() not started\n");
+        fprintf(stderr, "io::start() not started, device not open\n");
         return scope.Close(Boolean::New(false));
     }
                     
     return scope.Close(Boolean::New( dmx->m_Thread->Start() ));
+}
+
+Handle<Value>
+DmxMain::stop(const Arguments& args) {
+    HandleScope scope;
+    Local<Object> obj = args.This();
+    DmxMain* dmx = ObjectWrap::Unwrap<DmxMain>(obj);
+    
+    if (dmx->m_Thread == NULL) {
+        fprintf(stderr, "io::stop() not stopped, device not open\n");
+        return scope.Close(Boolean::New(false));
+    }
+                    
+    return scope.Close(Boolean::New( dmx->m_Thread->Stop() ));
 }
 
 Handle<Value>
@@ -112,11 +149,13 @@ DmxMain::close(const Arguments& args) {
     }
     
     fprintf(stderr, "io::close() shutdown dmx thread\n");
+    
     if (dmx->m_Thread->IsRunning()) {
-        dmx->m_Thread->Stop();
-        dmx->m_Thread->Join();
+        dmx->m_Thread->Stop();            
     }
-        
+    
+    dmx->m_Thread->Dispose();
+    
     delete dmx->m_Thread;
     
     dmx->m_Thread = NULL;
@@ -127,7 +166,8 @@ DmxMain::close(const Arguments& args) {
 Handle<Value>
 DmxMain::write(const Arguments& args) {
     DmxBuffer buf;
-    Buffer* bytes;
+    const char* bytes = NULL;
+    int size = 0;
     
     HandleScope scope;    
     Local<Object> obj = args.This();
@@ -148,20 +188,19 @@ DmxMain::write(const Arguments& args) {
         return scope.Close(Boolean::New(false));
     }
     
-    obj = args[0]->ToObject();
     
-    //bytes = ObjectWrap::Unwrap<Buffer>();
-    /*
+    size  = Buffer::Length(args[0]->ToObject());
+    bytes = Buffer::Data(args[0]->ToObject());
+    
     if (bytes == NULL) {
         fprintf(stderr, "io::write() unpack failed\n");
         return scope.Close(Boolean::New(false));
     }
     
-    buf.Set((unsigned char*)Buffer::Data(bytes), Buffer::Length(bytes));
+    buf.Set((unsigned char*)bytes, size);
             
     return scope.Close(Boolean::New(dmx->m_Thread->WriteDmx(buf)));
-    */
-    return scope.Close(Boolean::New(true));
+
 }
 
 extern "C" {

@@ -19,43 +19,10 @@
  * Copyright (C) 2013 Nicklas Marelius
  */
 
-#ifndef Thread_H_
-#define Thread_H_
+#ifndef Constants_H_
+#define Constants_H_
 
-#include <pthread.h>
-#include "Mutex.h"
-
-typedef pthread_t ThreadId;
-
-/**
- * A thread object to be subclassed.
- */
-class Thread {
-  public:
-    Thread(): m_thread_id(), m_running(false) {}
-    virtual ~Thread() {}
-
-    virtual bool Start();
-    virtual bool FastStart();
-    virtual bool Join(void *ptr = NULL);
-    bool IsRunning();
-
-    ThreadId Id() const { return m_thread_id; }
-
-    // Called by pthread_create
-    void *_InternalRun();
-
-    static inline ThreadId Self() { return pthread_self(); }
-
-  protected:
-    // Sub classes implement this.
-    virtual void *Run() = 0;
-
-  private:
-    pthread_t m_thread_id;
-    bool m_running;
-    Mutex m_mutex;  // protects m_running
-    ConditionVariable m_condition;  // use to wait for the thread to start
-};
+#define DMX_UNIVERSE_SIZE 512
+#define DMX512_START_CODE 0
 
 #endif

@@ -13,11 +13,12 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Thread.cpp
- * A simple thread class
- * Copyright (C) 2010 Simon Newton
+ * OpenDMX driver from OLA. 
+ * adapted for node.js with fixed darwin support
+ * Copyright (C) 2010 Simon Newton              
+ * Copyright (C) 2013 Nicklas Marelius
  */
-
+ 
 #include <iostream>
 
 #include <pthread.h>

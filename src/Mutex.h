@@ -13,9 +13,10 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Mutex.cpp
- * Mutex and ConditionVariable
- * Copyright (C) 2010 Simon Newton
+ * OpenDMX driver from OLA. 
+ * adapted for node.js with fixed darwin support
+ * Copyright (C) 2010 Simon Newton              
+ * Copyright (C) 2013 Nicklas Marelius
  */
 
 #ifndef Mutex_H_
@@ -23,10 +24,10 @@
 
 #include <pthread.h>
 
-class Mutex {
-  public:
-    friend class ConditionVariable;
-
+class Mutex 
+{
+public:
+    
     Mutex();
     ~Mutex();
 
@@ -34,27 +35,31 @@ class Mutex {
     bool TryLock();
     void Unlock();
 
-  private:
+private:
     pthread_mutex_t m_mutex;
 
     Mutex(const Mutex&);
     Mutex& operator=(const Mutex&);
+    
+    friend class ConditionVariable;
 };
 
-class MutexLocker {
-  public:
+class MutexLocker
+{
+public:
     explicit MutexLocker(Mutex *mutex);
     ~MutexLocker();
 
-  private:
+private:
     Mutex *m_mutex;
 
     MutexLocker(const MutexLocker&);
     MutexLocker& operator=(const MutexLocker&);
 };
 
-class ConditionVariable {
-  public:
+class ConditionVariable 
+{
+public:
     ConditionVariable();
     ~ConditionVariable();
 
@@ -64,7 +69,7 @@ class ConditionVariable {
     void Signal();
     void Broadcast();
 
-  private:
+private:
     pthread_cond_t m_condition;
 
     ConditionVariable(const ConditionVariable&);

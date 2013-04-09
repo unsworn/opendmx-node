@@ -1,5 +1,26 @@
-#ifndef image_H_
-#define image_H_
+/*
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Library General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ *
+ * OpenDMX driver from OLA. 
+ * adapted for node.js with fixed darwin support
+ * Copyright (C) 2010 Simon Newton              
+ * Copyright (C) 2013 Nicklas Marelius
+ */
+ 
+#ifndef DmxMain_H_
+#define DmxMain_H_
 
 #include <node.h>
 #include <v8.h>
@@ -16,6 +37,7 @@ public:
 
     static Handle<Value> open(const Arguments& args);
     static Handle<Value> start(const Arguments& args);
+    static Handle<Value> stop(const Arguments& args);
     static Handle<Value> close(const Arguments& args);
     static Handle<Value> write(const Arguments& args);
 
@@ -26,7 +48,7 @@ private:
     DmxMain(Handle<Object> wrapper);
     static Persistent<FunctionTemplate> constructor_template;
     
-    OpenDmxThread* m_Thread;
+    DmxThread* m_Thread;
     
 };
 

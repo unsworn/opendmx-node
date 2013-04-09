@@ -19,8 +19,11 @@
                         'include_dirs': [
                             "/opt/local/include"
                         ],
+                        'defines': [
+                            'DEBUG_FTD2XX=1'
+                        ],
                         "link_settings": {
-                            'libraries': ["-L/opt/local/lib","-lftd2xx"]
+                            'libraries': ["-L/opt/local/lib", "-lftd2xx"]
                         },
                     }
                 ],

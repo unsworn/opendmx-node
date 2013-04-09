@@ -13,14 +13,10 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * DmxBuffer.cpp
- * The DmxBuffer class
- * Copyright (C) 2005-2009 Simon Newton
- *
- * This implements a DmxBuffer which uses copy-on-write and delayed init.
- *
- * A DmxBuffer can hold up to 512 bytes of channel information. The amount of
- * valid data is returned by calling Size().
+ * OpenDMX driver from OLA. 
+ * adapted for node.js with fixed darwin support
+ * Copyright (C) 2010 Simon Newton              
+ * Copyright (C) 2013 Nicklas Marelius
  */
 
 #include <string.h>
@@ -28,7 +24,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "Types.h"
+#include "Constants.h"
+
 #include "StringUtils.h"
 #include "DmxBuffer.h"
 

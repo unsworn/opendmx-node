@@ -13,11 +13,12 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * StringUtils.cpp
- * Random String functions.
- * Copyright (C) 2005-2008 Simon Newton
+ * OpenDMX driver from OLA. 
+ * adapted for node.js with fixed darwin support
+ * Copyright (C) 2010 Simon Newton              
+ * Copyright (C) 2013 Nicklas Marelius
  */
-
+ 
 #define __STDC_LIMIT_MACROS  // for UINT8_MAX & friends
 #include <errno.h>
 #include <stdint.h>

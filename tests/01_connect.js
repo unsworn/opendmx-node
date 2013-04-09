@@ -1,22 +1,41 @@
 unit=require('./units');
 opendmx=require('../build/Release/opendmx.node');
-
-unit.run('load', function() {
-    dmxio = new opendmx.io();
-    
-    var b = new Buffer(32)
-    
-    b.writeInt8(0, 0)
+/*
+unit.run('connect', function() {
+    var dmxio = new opendmx.io();
     
     unit.assert(dmxio != null)
     
-    unit.assert(dmxio.open("/dev/cu.usbserial-AH019G6B"))
+    unit.assert(dmxio.open())
+    
+    unit.assert(dmxio.close())
+    
+});
+*/
+unit.run('send', function() {
+    
+    var buf = new Buffer(512);
+    
+    buf.fill(0);
+    
+    var dmxio = new opendmx.io();
+    
+    unit.assert(dmxio != null)
+    
+    unit.assert(dmxio.open())
     
     unit.assert(dmxio.start())
     
-    unit.assert(dmxio.write(b))
+    console.log("started..");
     
-    unit.assert(dmxio.close())
-});
+    buf.writeUInt8(0x0, 1);
+        
+    unit.assert(dmxio.write(buf))
+    
+    setTimeout(function() {  
+        console.log("clean up");
+        unit.assert(dmxio.close());
+    }, 5000);
 
+});
 
