@@ -9,7 +9,8 @@
  */
  
 #include <stdio.h>
-#include <string.h>
+#include <string.h>   
+#include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
 #include <sys/types.h>
@@ -18,6 +19,10 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include "serial.h"
+
+struct serialhandle_s {
+    int fd;
+};
 
 int 
 serial_is_port(const char* p)
@@ -47,27 +52,51 @@ serial_count()
 }
 
 int
-serial_names(char** list)
+serial_list(serialinfo_list_s* list)
 {
-    int i=0;
+    int i=0, numDevs = serial_count();
     DIR* dir = NULL;
     struct dirent* entry;
+    
+    list->size = numDevs;
     
     if ((dir = opendir("/dev")) == NULL)
         return -1;
     
-    while ((entry = readdir(dir)) != NULL)
-        if (serial_is_port(entry->d_name))
-            list[i++] = strdup(entry->d_name);
-
+    list->info = (serialinfo_s*) malloc (list->size * sizeof(serialinfo_s));
+    
+    while ((entry = readdir(dir)) != NULL) {
+        if (serial_is_port(entry->d_name) && i < numDevs) {
+            list->info[i].name = strdup(entry->d_name);;
+            list->info[i].port = 0;
+            list->info[i].baud = 230400;
+            list->info[i].parity = SERIAL_PARITY_NONE;
+            list->info[i].stopbits = 1;
+            list->info[i].databits = 8;
+            i++;
+        }
+    }
+    
     closedir(dir);
     return i;
+}
+
+void
+serial_list_free(serialinfo_list_s* list) 
+{
+    int i;
+    if (!list->info)
+        return ;
+    for (i=0 ; i < list->size ; i++)
+        free(list->info[i].name);
+    free(list->info);
 }
 
 int
 serial_init(serial_s* serial)
 {
-    serial->fd = SERIAL_INVALID_FD;
+    serial->port = (struct serialhandle_s*) malloc(sizeof(struct serialhandle_s));
+    serial->port->fd = SERIAL_INVALID_FD;
     serial->info.baud = 9600;
     serial->info.parity = SERIAL_PARITY_NONE;
     serial->info.stopbits = 1;
@@ -80,6 +109,7 @@ serial_cleanup(serial_s* serial)
 {
     if (serial_isopen(serial))
         serial_close(serial);
+    free(serial->port);
 }
 
 int 
@@ -192,7 +222,7 @@ serial_open(serial_s* serial, const char* port)
         return -1;
     }
     
-    serial->fd = fd;
+    serial->port->fd = fd;
     
     return 0;
     
@@ -201,20 +231,20 @@ serial_open(serial_s* serial, const char* port)
 void 
 serial_close(serial_s *serial)
 {
-    close(serial->fd);
-    serial->fd = SERIAL_INVALID_FD;
+    close(serial->port->fd);
+    serial->port->fd = SERIAL_INVALID_FD;
 }
 
 int 
 serial_read(serial_s *serial, void *buf, size_t count)
 {
-    return read(serial->fd, buf, count);
+    return read(serial->port->fd, buf, count);
 }
 
 int 
 serial_write(serial_s *serial, void *buf, size_t count)
 {
-    return write(serial->fd, buf, count);
+    return write(serial->port->fd, buf, count);
 }
 
 int
@@ -229,12 +259,12 @@ serial_recv(serial_s* serial, int to_sec, void* buf, size_t bufsz)
     
     FD_ZERO(&ports);
 
-    FD_SET(serial->fd, &ports);
+    FD_SET(serial->port->fd, &ports);
 
-    err = select(serial->fd+1, &ports, NULL, NULL, &timeout);
+    err = select(serial->port->fd+1, &ports, NULL, NULL, &timeout);
 
     if (err > 0)
-        return read(serial->fd, buf, bufsz);
+        return read(serial->port->fd, buf, bufsz);
 
     return 0;
 }
@@ -242,7 +272,7 @@ serial_recv(serial_s* serial, int to_sec, void* buf, size_t bufsz)
 int 
 serial_isopen(serial_s *serial)
 {
-    return (serial->fd != SERIAL_INVALID_FD);
+    return (serial->port->fd != SERIAL_INVALID_FD);
 }
 
 int 
@@ -259,9 +289,9 @@ serial_flush(serial_s *serial, int dir)
     {
         switch(dir)
         {
-        case SERIAL_IN: tcflush(serial->fd, TCIFLUSH); break;
-        case SERIAL_OUT: tcflush(serial->fd, TCOFLUSH); break;
-        case SERIAL_IN | SERIAL_OUT: tcflush(serial->fd, TCIOFLUSH); break;
+        case SERIAL_IN: tcflush(serial->port->fd, TCIFLUSH); break;
+        case SERIAL_OUT: tcflush(serial->port->fd, TCOFLUSH); break;
+        case SERIAL_IN | SERIAL_OUT: tcflush(serial->port->fd, TCIOFLUSH); break;
         }
     }
 }
@@ -271,15 +301,16 @@ serial_drain(serial_s *serial)
 {
     if (serial_isopen(serial))
     {
-        tcdrain(serial->fd);
+        tcdrain(serial->port->fd);
     }
 }
 
 void 
 serial_debug(serial_s *serial, FILE *f)
 {
+    
     fprintf(f, "serial {\n");
-    fprintf(f, "\tfd = %d\n", serial_isopen(serial) ? serial->fd : 0);
+    fprintf(f, "\tfd = %d\n", serial_isopen(serial) ? serial->port->fd : 0);
     fprintf(f, "\tbaud = %ld\n", serial->info.baud);    
     fprintf(f, "\tparity = %d\n", serial->info.parity); 
     fprintf(f, "\tstopbits = %d\n", serial->info.stopbits);

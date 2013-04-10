@@ -1,5 +1,5 @@
 /*
- * serial.c 
+ * serial.c    for ftd2xx raw
  *
  * serial port routines
  *
@@ -9,7 +9,8 @@
  */
  
 #include <stdio.h>
-#include <string.h>
+#include <string.h>               
+#include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
 #include <sys/types.h>
@@ -19,56 +20,75 @@
 #include <dirent.h>
 #include "serial.h"
 
-int 
-serial_is_port(const char* p)
-{
-    if (p == NULL)
-        return 0;
-    return (p[0] == 'c' && p[1] == 'u' && p[2] == '.');
-}
+#include <ftd2xx.h>
+
+struct serialhandle_s {
+    FT_HANDLE ft;
+};
 
 int 
 serial_count()
 {
-    int c=0;
-    DIR* dir = NULL;
-    struct dirent* entry;
-    
-    if ((dir = opendir("/dev")) == NULL)
-        return 0;
-            
-    while((entry = readdir(dir)) != NULL)
-        if (serial_is_port(entry->d_name))
-            c++;
-
-    closedir(dir);
-    return c;
-        
+    DWORD numDevs = 0;
+    if (FT_ListDevices(&numDevs, NULL, FT_LIST_NUMBER_ONLY) != FT_OK) {
+        fprintf(stderr, "FT_LIST_NUMBER_ONLY fails\n");
+    }
+    return (int)numDevs;
 }
 
 int
-serial_names(char** list)
+serial_list(serialinfo_list_s* list)
 {
-    int i=0;
-    DIR* dir = NULL;
-    struct dirent* entry;
+    char** names;
+    DWORD i=0,numDevs = serial_count();
     
-    if ((dir = opendir("/dev")) == NULL)
-        return -1;
+    if (numDevs <= 0)
+        return 1;
     
-    while ((entry = readdir(dir)) != NULL)
-        if (serial_is_port(entry->d_name))
-            list[i++] = strdup(entry->d_name);
+    list->size = numDevs;
+    
+    names = (char **) malloc ( numDevs * sizeof(char*) );
+    
+    for (i = 0 ; i < numDevs ; i++)
+        names[i] = (char*) malloc (64 * sizeof(char));
+        
+    if (FT_ListDevices(names, &numDevs, FT_LIST_ALL|FT_OPEN_BY_SERIAL_NUMBER) != FT_OK) {
+        fprintf(stderr, "FT_OPEN_BY_SERIAL_NUMBER fails\n");
+    }
+    
+    list->info = (serialinfo_s*) malloc (list->size * sizeof(serialinfo_s));
+    
+    for (i=0 ; i < numDevs ; i++) {
+        list->info[i].name = names[i];
+        list->info[i].port = i;
+        list->info[i].baud = 230400;
+        list->info[i].parity = SERIAL_PARITY_NONE;
+        list->info[i].stopbits = 1;
+        list->info[i].databits = 8;
+    }
+    
+    free(names);
+    
+    return 0;
+}
 
-    closedir(dir);
-    return i;
+void
+serial_names_free(serialinfo_list_s* list)
+{
+    int i;
+    if (!list->info)
+        return ;
+    for (i=0 ; i < list->size ; i++)
+        free(list->info[i].name);
+    free(list->info);
 }
 
 int
 serial_init(serial_s* serial)
 {
-    serial->fd = 0;
-    serial->info.baud = 9600;
+    serial->port = (struct serialhandle_s*) malloc(sizeof(struct serialhandle_s));
+    serial->port->ft = NULL;
+    serial->info.baud = 230400;
     serial->info.parity = SERIAL_PARITY_NONE;
     serial->info.stopbits = 1;
     serial->info.databits = 8;
@@ -79,120 +99,57 @@ void
 serial_cleanup(serial_s* serial)
 {
     if (serial_isopen(serial))
-        serial_close(serial);
+        serial_close(serial);  
+    free(serial->port);
 }
 
 int 
 serial_open(serial_s* serial, const char* port)
-{
-    char filename[512];
-    
-    struct termios t;
-    int fd, c_stop, c_data, i_parity, c_parity;
-    speed_t speed;
+{            
+    FT_HANDLE ft;
+    UCHAR i_parity;
     
     if (serial_isopen(serial))
         return -1;
-                     
-    sprintf(filename, "/dev/%s", port);
-
-    fd = open(filename, O_RDWR);
-
-    if (fd == -1)
-        return -1;
-    
-    if (tcgetattr(fd, &t))
-    {
-        close(fd);
+        
+    if (FT_OpenEx((void*)port, FT_OPEN_BY_SERIAL_NUMBER, &ft) != FT_OK) {
+        fprintf(stderr, "FT_OPEN_BY_SERIAL_NUMBER %s fails\n", port);
         return -1;
     }
     
-    switch(serial->info.baud)
-    {
-        case 0:      speed = B0; break;
-        case 50:     speed = B50; break;
-        case 75:     speed = B75; break;
-        case 110:    speed = B110; break;
-        case 134:    speed = B134; break;
-        case 150:    speed = B150; break;
-        case 300:    speed = B300; break;
-        case 600:    speed = B600; break;
-        case 1200:   speed = B1200; break;
-        case 1800:   speed = B1800; break;
-        case 2400:   speed = B2400; break;
-        case 4800:   speed = B4800; break;
-        case 9600:   speed = B9600; break;
-        case 19200:  speed = B19200; break;
-        case 38400:  speed = B38400; break;
-        case 57600:  speed = B57600; break;
-        case 115200: speed = B115200; break;
-        case 230400: speed = B230400; break;
-        default:     speed = B0; break;
-    }
-
-    if (speed == B0)
-    {
-        close(fd);
-        return -1;
+    if (FT_SetBaudRate(ft, serial->info.baud) != FT_OK) {
+        fprintf(stderr, "FT_SetBaudRate fails\n");
     }
     
-    if (cfsetospeed(&t, speed))
-    {
-        close(fd);
-        return -1;
-    }
-
-    if (cfsetispeed(&t, speed))
-    {
-        close(fd);
-        return -1;
-    }
-    
-    switch(serial->info.stopbits)
-    {
-    case 1: c_stop = 0; break;
-    case 2: c_stop = CSTOPB; break;
-    default: close(fd); return -1;
-    }
-
-    switch(serial->info.databits)
-    {
-    case 5: c_data = CS5; break;
-    case 6: c_data = CS6; break;
-    case 7: c_data = CS7; break;
-    case 8: c_data = CS8; break;
-    default: close(fd); return -1;
-    }
-
     switch(serial->info.parity)
     {
     case SERIAL_PARITY_NONE:
-        i_parity = IGNPAR;
-        c_parity = 0;
+        i_parity = FT_PARITY_NONE;
         break;
         
     case SERIAL_PARITY_EVEN:
-        i_parity = INPCK;
-        c_parity = PARENB;
+        i_parity = FT_PARITY_EVEN;
         break;
 
     case SERIAL_PARITY_ODD:
-        i_parity = INPCK;
-        c_parity = PARENB | PARODD;
+        i_parity = FT_PARITY_ODD;
         break;
-
     default:
-        close(fd);
-        return -1;
-    }
-
-    if (tcsetattr(fd, TCSANOW, &t))
-    {
-        close(fd);
-        return -1;
+        i_parity = FT_PARITY_NONE;
+        break;
     }
     
-    serial->fd = fd;
+    
+    if(FT_SetDataCharacteristics(
+        ft, 
+        serial->info.databits, 
+        serial->info.stopbits,
+        i_parity) != FT_OK) {
+            fprintf(stderr, "FT_SetDataCharacteristics fails\n");
+    }
+
+    // all setup
+    serial->port->ft = ft;
     
     return 0;
     
@@ -201,48 +158,45 @@ serial_open(serial_s* serial, const char* port)
 void 
 serial_close(serial_s *serial)
 {
-    close(serial->fd);
-    serial->fd = 0;
+    if (serial_isopen(serial))
+        if (FT_Close(serial->port->ft) != FT_OK)
+            fprintf(stderr, "FT_Close fails\n");
+    serial->port->ft = NULL;
 }
 
 int 
 serial_read(serial_s *serial, void *buf, size_t count)
 {
-    return read(serial->fd, buf, count);
+    DWORD nBytesRead = 0;
+    if (FT_Read(serial->port->ft, buf, count, &nBytesRead) != FT_OK) {
+        fprintf(stderr, "FT_Read fails\n");                           
+        return -1;
+    }
+    return nBytesRead;
 }
 
 int 
 serial_write(serial_s *serial, void *buf, size_t count)
-{
-    return write(serial->fd, buf, count);
+{        
+    DWORD nBytesWritten = 0;
+    if (FT_Write(serial->port->ft, buf, count, &nBytesWritten) != FT_OK) {
+        fprintf(stderr, "FT_Write fails\n");
+        return -1;
+    }
+    return nBytesWritten;
 }
 
 int
 serial_recv(serial_s* serial, int to_sec, void* buf, size_t bufsz)
 {
-    fd_set         ports;
-    struct timeval timeout;
-    int            err;
-
-    timeout.tv_sec = to_sec;
-    timeout.tv_usec = 0;
-    
-    FD_ZERO(&ports);
-
-    FD_SET(serial->fd, &ports);
-
-    err = select(serial->fd+1, &ports, NULL, NULL, &timeout);
-
-    if (err > 0)
-        return read(serial->fd, buf, bufsz);
-
+    fprintf(stderr, "recv() not implemented\n");
     return 0;
 }
 
 int 
 serial_isopen(serial_s *serial)
 {
-    return (serial->fd != 0);
+    return (serial->port->ft != NULL);
 }
 
 int 
@@ -255,31 +209,18 @@ serial_setinfo(serial_s *serial, serialinfo_s *info)
 void 
 serial_flush(serial_s *serial, int dir)
 {
-    if (serial_isopen(serial))
-    {
-        switch(dir)
-        {
-        case SERIAL_IN: tcflush(serial->fd, TCIFLUSH); break;
-        case SERIAL_OUT: tcflush(serial->fd, TCOFLUSH); break;
-        case SERIAL_IN | SERIAL_OUT: tcflush(serial->fd, TCIOFLUSH); break;
-        }
-    }
 }
 
 void 
 serial_drain(serial_s *serial)
 {
-    if (serial_isopen(serial))
-    {
-        tcdrain(serial->fd);
-    }
 }
 
 void 
 serial_debug(serial_s *serial, FILE *f)
 {
     fprintf(f, "serial {\n");
-    fprintf(f, "\tfd = %d\n", serial_isopen(serial) ? serial->fd : 0);
+    fprintf(f, "\tfd = %d\n", serial_isopen(serial) ? serial->port->ft != NULL : 0);
     fprintf(f, "\tbaud = %ld\n", serial->info.baud);    
     fprintf(f, "\tparity = %d\n", serial->info.parity); 
     fprintf(f, "\tstopbits = %d\n", serial->info.stopbits);

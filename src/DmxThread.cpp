@@ -49,7 +49,26 @@ DmxThread::DmxThread(const string &path)
 }
 
 bool DmxThread::Open() {
-    return false;
+    
+    serialinfo_list_s list;
+    
+    if (m_path.empty()) {
+        
+        serial_list(&list);
+        
+        if (list.size == 0) {
+            fprintf(stderr, "Open() no devices found\n");
+            serial_list_free(&list);
+            return false;
+        }
+        
+        m_path.assign( list.info[0].name );
+        
+        fprintf(stderr, "Open() autoselect: %s\n", m_path.c_str());
+        
+    }
+    
+    return (serial_open(&m_fd, m_path.c_str()) == SERIAL_OK);
 }
 /*
  * Run this thread
@@ -106,13 +125,15 @@ void *DmxThread::Run() {
                 fprintf(stderr,"Error writing to device: %s\n", strerror(errno));
                 serial_close(&m_fd);
             }
+            //fprintf(stderr, "Run() wrote %d bytes\n", length);
         }
     }
     return NULL;
 }
 
-void DmxThread::Dispose() {
-    
+void DmxThread::Dispose() 
+{
+    serial_cleanup(&m_fd);
 }
 /*
  * Stop the thread
