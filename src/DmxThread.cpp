@@ -66,6 +66,8 @@ bool DmxThread::Open() {
         
         fprintf(stderr, "Open() autoselect: %s\n", m_path.c_str());
         
+    } else {
+        fprintf(stderr, "Open() path: %s\n", m_path.c_str());
     }
     
     return (serial_open(&m_fd, m_path.c_str()) == SERIAL_OK);

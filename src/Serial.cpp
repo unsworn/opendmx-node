@@ -115,8 +115,6 @@ serial_cleanup(serial_s* serial)
 int 
 serial_open(serial_s* serial, const char* port)
 {
-    char filename[512];
-    
     struct termios t;
     int fd, c_stop, c_data, i_parity, c_parity;
     speed_t speed;
@@ -124,12 +122,12 @@ serial_open(serial_s* serial, const char* port)
     if (serial_isopen(serial))
         return -1;
                      
-    sprintf(filename, "/dev/%s", port);
+    fd = open(port, O_RDWR);
 
-    fd = open(filename, O_RDWR);
-
-    if (fd == -1)
+    if (fd == -1) {
+        fprintf(stderr, "serial_open() invalid fd, open fails\n");
         return -1;
+    }
     
     if (tcgetattr(fd, &t))
     {

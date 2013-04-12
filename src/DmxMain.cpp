@@ -65,7 +65,8 @@ DmxMain::init(Handle<Object> target) {
     NODE_SET_PROTOTYPE_METHOD(constructor_template, "stop", stop);
     NODE_SET_PROTOTYPE_METHOD(constructor_template, "close", close);
     NODE_SET_PROTOTYPE_METHOD(constructor_template, "write", write);
-
+    NODE_SET_PROTOTYPE_METHOD(constructor_template, "set", set);
+    
     target->Set(String::New("io"), constructor_template->GetFunction());
 }
 
@@ -86,7 +87,6 @@ DmxMain::open(const Arguments& args) {
     Local<Object> obj = args.This();
     DmxMain* dmx = ObjectWrap::Unwrap<DmxMain>(obj);
 
-
     if (dmx->m_Thread != NULL) {
         fprintf(stderr, "io::open() already open\n");
         return scope.Close(Boolean::New(true));
@@ -96,7 +96,7 @@ DmxMain::open(const Arguments& args) {
         
         String::Utf8Value path(args[0]);
 
-        if (stat(*path, &st) != 0) {
+        if ( ((const char*) *path)[0] == '/' && stat(*path, &st) != 0) {
             fprintf(stderr, "io::open() no such file or directory: %s\n", *path);
             return scope.Close(Boolean::New(false));
         }
